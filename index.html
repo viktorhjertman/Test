@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Delad kalender</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    h1 { font-size: 1.5em; }
+    button, input { padding: 10px; margin: 5px 0; width: 100%; font-size: 1em; }
+    ul { list-style: none; padding: 0; }
+    li { padding: 10px; border: 1px solid #ccc; margin: 5px 0; border-radius: 8px; }
+    .muted { opacity: 0.7; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <h1>📅 Delad kalender</h1>
+
+  <button onclick="createCalendar()">➕ Skapa kalender</button>
+  <input id="calendarIdInput" placeholder="Klistra in kalender-ID eller länk"/>
+  <button onclick="joinCalendar()">Gå med</button>
+  <p id="calendarId" class="muted"></p>
+
+  <button onclick="startVoiceInput()">🎤 Lägg till med röst</button>
+  <button onclick="manualAdd()">✍️ Lägg till manuellt</button>
+
+  <ul id="eventList"></ul>
+
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+  <script>
+    // 🔑 Byt ut mot din egen Firebase-konfiguration
+    const firebaseConfig = {
+      apiKey: "DIN_API_KEY",
+      authDomain: "DITT_PROJEKT.firebaseapp.com",
+      databaseURL: "https://DITT_PROJEKT-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "DITT_PROJEKT",
+      storageBucket: "DITT_PROJEKT.appspot.com",
+      messagingSenderId: "DIN_SENDER_ID",
+      appId: "DIN_APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let currentCalendar = null;
+    let eventsRef = null;
+
+    function createCalendar() {
+      const id = Math.random().toString(36).substring(2, 8);
+      setCalendar(id);
+    }
+
+    function joinCalendar() {
+      let val = document.getElementById('calendarIdInput').value.trim();
+      try { val = new URL(val).searchParams.get('cal') || val; } catch {}
+      if (val) setCalendar(val);
+    }
+
+    function setCalendar(id) {
+      currentCalendar = id;
+      document.getElementById('calendarId').textContent = "Kalender-ID: " + id;
+      const url = new URL(location.href);
+      url.searchParams.set('cal', id);
+      history.replaceState({}, '', url.toString());
+
+      if (eventsRef) eventsRef.off();
+      eventsRef = db.ref('calendars/' + id + '/events');
+      eventsRef.on('value', snap => {
+        const data = snap.val() || {};
+        const list = Object.values(data).map(e => `<li><strong>${e.title}</strong><br><span class="muted">${e.date} ${e.time}</span></li>`).join('');
+        document.getElementById('eventList').innerHTML = list;
+      });
+    }
+
+    function parseText(text) {
+      const lower = text.toLowerCase();
+      let time = '';
+      const t = lower.match(/\b(\d{1,2})([:\.](\d{2}))?\b/);
+      if (t) time = t[1].padStart(2,'0') + ':' + (t[3] || '00');
+      let date = new Date().toISOString().slice(0,10);
+      if (lower.includes('imorgon')) {
+        const d = new Date(); d.setDate(d.getDate()+1);
+        date = d.toISOString().slice(0,10);
+      }
+      let title = text.replace(/klockan\s*\d{1,2}([:\.]\d{2})?/i,'').replace(/imorgon/i,'').trim();
+      return { isEvent: !!title, title, date, time };
+    }
+
+    function startVoiceInput() {
+      if (!('webkitSpeechRecognition' in window)) {
+        alert('Röstigenkänning stöds inte här.');
+        return;
+      }
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const rec = new SR();
+      rec.lang = 'sv-SE';
+      rec.onresult = (e) => {
+        const text = e.results[0][0].transcript;
+        const evt = parseText(text);
+        if (!evt.isEvent) return alert('Kunde inte tolka som händelse.');
+        if (!currentCalendar) return alert('Skapa eller gå med i en kalender först.');
+        const id = Math.random().toString(36).substring(2, 10);
+        db.ref('calendars/' + currentCalendar + '/events/' + id).set({ id, ...evt });
+      };
+      rec.start();
+    }
+
+    function manualAdd() {
+      const text = prompt('Skriv händelse:');
+      if (!text) return;
+      const evt = parseText(text);
+      if (!evt.isEvent) return alert('Kunde inte tolka.');
+      if (!currentCalendar) return alert('Skapa eller gå med i en kalender först.');
+      const id = Math.random().toString(36).substring(2, 10);
+      db.ref('calendars/' + currentCalendar + '/events/' + id).set({ id, ...evt });
+    }
+
+    const params = new URLSearchParams(location.search);
+    if (params.get('cal')) setCalendar(params.get('cal'));
+  </script>
+</body>
+</html>
