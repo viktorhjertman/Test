@@ -31,14 +31,20 @@
   <script>
     // 🔑 Byt ut mot din egen Firebase-konfiguration
     const firebaseConfig = {
-      apiKey: "DIN_API_KEY",
-      authDomain: "DITT_PROJEKT.firebaseapp.com",
-      databaseURL: "https://DITT_PROJEKT-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "DITT_PROJEKT",
-      storageBucket: "DITT_PROJEKT.appspot.com",
-      messagingSenderId: "DIN_SENDER_ID",
-      appId: "DIN_APP_ID"
-    };
+  apiKey: "YOUR_API_KEY", // Detta är din unika API-nyckel för webbappen
+  authDomain: "test-196b1.firebaseapp.com",
+  databaseURL: "https://test-196b1-default-rtdb.europe-west1.firebasedatabase.app", // Baserat på din förra fråga och projekt-ID
+  projectId: "test-196b1",
+  storageBucket: "test-196b1.firebasestorage.app",
+  messagingSenderId: "412361207441", // Detta är ditt projektnummer
+  appId: "1:412361207441:web:YOUR_WEB_APP_ID_HASH" // Detta är din webbapps unika ID
+  // measurementId: "G-XXXXXXXXXX" // Valfritt, om du använder Google Analytics med en G-ID
+};
+
+// Initialisera Firebase i din app
+// import { initializeApp } from "firebase/app";
+// const app = initializeApp(firebaseConfig);
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
